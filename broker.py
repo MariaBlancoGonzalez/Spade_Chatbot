@@ -34,14 +34,23 @@ def readRows():
     datos = cursor.fetchall()
     conn.commit()
     conn.close()
-    print(datos)
+    return datos
 
-if __name__ == "__main__":
-    #createDB()
-    #createTable()
-    #insertRow("Bill Gates","William Henry Gates III (Seattle, Washington; 28 de octubre de 1955)," 
-    #                "mejor conocido como Bill Gates (AFI: [bil gejts]), es un empresario, informático"
-    #               "y filántropo estadounidense, conocido por haber creado y fundado junto con Paul Allen,"
-    #               "la empresa Microsoft. De igual forma es conocido por haber creado, también con Paul Allen,"
-    #               "el sistema operativo para computadoras Windows.", 1)
-    readRows()
+def readOrderedPeople():
+    conn = sql.connect("responses.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        f"SELECT * FROM whoIs ORDER BY number_search DESC")
+    datos = cursor.fetchall()
+    conn.commit()
+    conn.close()
+    return datos[0]
+
+def updatePeople(search, number):
+    print(search)
+    conn = sql.connect("responses.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        f"UPDATE whoIs SET number_search = {number} WHERE search = '{search}'")
+    conn.commit()
+    conn.close()

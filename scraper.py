@@ -5,7 +5,7 @@ import bs4
 
 def parse_name(name):
     name_parsed = name.title()
-    name_parsed = name_parsed.replace(' ', '_')
+    #name_parsed = name_parsed.replace(' ', '_')
 
     return name_parsed
 
@@ -13,9 +13,6 @@ def who_is(name):
     url = 'https://es.wikipedia.org/wiki/'
     request_page = requests.get(url)
     
-    #print(f'{url} request in progress \n')
-
-    name = parse_name(name)
     request_page = requests.get(url+name)
     html_soup_inner = bs4.BeautifulSoup(request_page.content, 'html.parser')
 

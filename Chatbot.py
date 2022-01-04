@@ -3,6 +3,7 @@ import time
 import datetime # time
 import scraper # web scrapping
 import music as msc
+import broker as db
 from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
 from spade.message import Message
@@ -22,20 +23,23 @@ class SenderAgent(Agent):
             while choice == 0:
                 response = input("\nHow can I help you?: ")
                 print("-You say: ", response)
-                if response in "show me the time":
+                if response in "show time":
                     choice = 1
                 elif "who is" in response:
                     choice = 2
                 elif "file" in response:
                     choice = 3
                 elif "download" in response or "youtube" in response:
-                    choice = 4    
+                    choice = 4
+                elif "history" in response:
+                    choice = 5
                 elif "help" == response:
                     print("This is a list with all commands available: "
                     "\n\t - show me the time"
                     "\n\t - who is 'famous person'"
                     "\n\t - file"
                     "\n\t - download"
+                    "\n\t - history"
                     "\n\t - help")
                 elif "exit" == response:
                     pass
@@ -106,6 +110,14 @@ class SenderAgent(Agent):
                 await self.send(msg)
                 print("..................................................................................................")
 
+            elif choice == 5:
+                msg = Message(to=data['spade_intro_2']['username'], sender=data['spade_intro']['username'])
+                msg.set_metadata("performative", "request")
+                msg.set_metadata("protocol", "history")           
+
+                await self.send(msg)
+                print("..................................................................................................")
+
             await asyncio.sleep(1)
 
     async def setup(self):
@@ -114,6 +126,7 @@ class SenderAgent(Agent):
         self.add_behaviour(petis)
 
 class ReceiverAgent(Agent):
+
     class TimeBehav(CyclicBehaviour):
         ''' 
         
@@ -133,15 +146,31 @@ class ReceiverAgent(Agent):
 
             msg = await self.receive()
             if msg:
-                print("-Bot say: ", scraper.who_is(msg.body))
+                description = None
+                times = 0
+                name = scraper.parse_name(msg.body)
+
+                for i in search:
+                    if i[0] == name:
+                        description = i[1]
+                        times = i[2]
+                        break
+
+                if description == None:
+                    texto = scraper.who_is(name)
+                    print("-Bot say: ", texto)
+                    db.insertRow(name, texto,1)
+                else:
+                    print("-Bot say: This person is already in our database", description)
+                    db.updatePeople(name, times+1)
                 print("..................................................................................................")
-        
+    
+
     class CreateFile(CyclicBehaviour):
         ''' 
         
         '''
         async def run(self):
-
             msg = await self.receive() 
             if msg:
                 print("-Bot say: writing file...")
@@ -165,7 +194,27 @@ class ReceiverAgent(Agent):
                 print("-Bot say: Video store in music folder")
                 print("..................................................................................................")
 
+    class History(CyclicBehaviour):
+        ''' 
+        
+        '''
+        async def run(self):
+
+            msg = await self.receive() 
+            if msg:
+                people = db.readOrderedPeople()
+                print("-Bot say: The most search person is: ", people[0],
+                        "\n-Bot say: Result of this search: ", people[1],
+                        "\n-Bot say: Times this person has been search: ", people[2])
+
+                print("..................................................................................................")
+
     async def setup(self):
+        print("[Receiver Agent] "+str(self.jid)+ " started")
+
+        global search 
+        search = db.readRows()
+        print("Loading responses...")
 
         def __create_template__(protocol):
             template = Template()
@@ -174,24 +223,26 @@ class ReceiverAgent(Agent):
             template.metadata = {"performative": "request", "protocol":protocol}
 
             return template
-
-        print("[Receiver Agent] "+str(self.jid)+ " started")
+        
         time = self.TimeBehav()
         whois = self.WhoIs()
         file = self.CreateFile()
         download = self.Download()
+        history = self.History()
 
         # Msg Templates
         template_time = __create_template__("current_time")
         template_whois = __create_template__("who_is")
         template_file = __create_template__("file")
         template_download = __create_template__("download")
+        template_history = __create_template__("history")
 
         # Adding the Behaviour with the template will filter all the msg
         self.add_behaviour(time, template_time) #Este comportamiento solo leera mensajes de este tipo
         self.add_behaviour(whois, template_whois)
         self.add_behaviour(file, template_file)
         self.add_behaviour(download, template_download)
+        self.add_behaviour(history, template_history)
 '''
 
     Método main:
