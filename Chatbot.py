@@ -19,7 +19,6 @@ class SenderAgent(Agent):
     class Peticiones(CyclicBehaviour):
         async def run(self):
             choice = 0
-
             while choice == 0:
                 response = input("\nHow can I help you?: ")
                 print("-You say: ", response)
@@ -33,6 +32,8 @@ class SenderAgent(Agent):
                     choice = 4
                 elif "history" in response:
                     choice = 5
+                elif "exit" == response:
+                    choice = 7
                 elif "help" == response:
                     print("This is a list with all commands available: "
                     "\n\t - show me the time"
@@ -40,9 +41,8 @@ class SenderAgent(Agent):
                     "\n\t - file"
                     "\n\t - download"
                     "\n\t - history"
+                    "\n\t - exit"
                     "\n\t - help")
-                elif "exit" == response:
-                    pass
                 else: 
                     print("[User Agent] Commant not recognized," ,
                     "you can type 'help' to show all the possible commands")
@@ -118,6 +118,15 @@ class SenderAgent(Agent):
                 await self.send(msg)
                 print("..................................................................................................")
 
+            elif choice == 7: 
+                msg = Message(to=data['spade_intro_2']['username'], sender=data['spade_intro']['username'])
+                msg.set_metadata("performative", "request")
+                msg.set_metadata("protocol", "exit")           
+
+                print("You shutting down...")
+                await self.send(msg)
+
+            
             await asyncio.sleep(1)
 
     async def setup(self):
@@ -143,6 +152,8 @@ class ReceiverAgent(Agent):
         
         '''
         async def run(self):
+            
+            search = db.readRows()
 
             msg = await self.receive()
             if msg:
@@ -157,9 +168,10 @@ class ReceiverAgent(Agent):
                         break
 
                 if description == None:
-                    texto = scraper.who_is(name)
-                    print("-Bot say: ", texto)
-                    db.insertRow(name, texto,1)
+                    text = scraper.who_is(name)
+                    print("-Bot say: ", text)
+                    if text != '':
+                        db.insertRow(name, text,1)
                 else:
                     print("-Bot say: This person is already in our database", description)
                     db.updatePeople(name, times+1)
@@ -209,11 +221,21 @@ class ReceiverAgent(Agent):
 
                 print("..................................................................................................")
 
+    class ShotDown(CyclicBehaviour):
+        ''' 
+        
+        '''
+        async def run(self):
+
+            msg = await self.receive() 
+            if msg:
+                print("Bot shutting down...")
+                await self.agent.stop()
+
     async def setup(self):
         print("[Receiver Agent] "+str(self.jid)+ " started")
 
-        global search 
-        search = db.readRows()
+
         print("Loading responses...")
 
         def __create_template__(protocol):
@@ -229,6 +251,7 @@ class ReceiverAgent(Agent):
         file = self.CreateFile()
         download = self.Download()
         history = self.History()
+        exit = self.ShotDown()
 
         # Msg Templates
         template_time = __create_template__("current_time")
@@ -236,6 +259,8 @@ class ReceiverAgent(Agent):
         template_file = __create_template__("file")
         template_download = __create_template__("download")
         template_history = __create_template__("history")
+        template_shotdown = __create_template__("exit")
+
 
         # Adding the Behaviour with the template will filter all the msg
         self.add_behaviour(time, template_time) #Este comportamiento solo leera mensajes de este tipo
@@ -243,6 +268,8 @@ class ReceiverAgent(Agent):
         self.add_behaviour(file, template_file)
         self.add_behaviour(download, template_download)
         self.add_behaviour(history, template_history)
+        self.add_behaviour(exit, template_shotdown)
+
 '''
 
     Método main:
