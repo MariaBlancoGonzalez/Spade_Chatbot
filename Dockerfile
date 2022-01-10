@@ -1,12 +1,15 @@
 FROM ubuntu:20.04
+FROM python:3.8
 MAINTAINER maria.blanco4@alu.uclm.es  
 
 RUN apt-get update 
 
-CMD [“echo”,”Image created”] 
-
-RUN apt-get install python3.8.10
 RUN apt-get install sqlite3
+
+RUN apt-get update && apt-get install -y \
+    python3-pip
+
+RUN apt-get update && apt-get install -y python3-opencv
 
 COPY requirements.txt ./requirements.txt
 WORKDIR ./
