@@ -1,11 +1,16 @@
 import sqlite3 as sql
+import os
+
+"""
+   ABOUT CREATION OF DB
+"""
 
 def createDB():
     conn = sql.connect("responses.db")
     conn.commit()
     conn.close()
 
-def createTable():
+def createTables():
     conn = sql.connect("responses.db")
     cursor = conn.cursor()
     cursor.execute(
@@ -15,8 +20,26 @@ def createTable():
             number_search integer
             )"""
         )
+    cursor.execute(
+        """ CREATE TABLE urls (
+            url text
+            )"""
+    )
+    cursor.execute(
+        """
+            CREATE TABLE images (
+                id integer PRIMARY KEY AUTOINCREMENT,
+                image_name text,
+                image blob
+            )
+        """
+    )
     conn.commit()
     conn.close()
+
+"""
+    REGARDING PEOPLE
+"""
 
 def insertRow(search, result, number_search):
     conn = sql.connect("responses.db")
@@ -52,5 +75,104 @@ def updatePeople(search, number):
     cursor = conn.cursor()
     cursor.execute(
         f"UPDATE whoIs SET number_search = {number} WHERE search = '{search}'")
+    conn.commit()
+    conn.close()
+
+"""
+    REGARDING URLS
+"""
+def readURL():
+    conn = sql.connect("responses.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        f"SELECT * FROM urls")
+    datos = cursor.fetchall()
+    conn.commit()
+    conn.close()
+    return datos
+
+def insertURL(url):
+    conn = sql.connect("responses.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        f"INSERT INTO urls VALUES ('{url}')")
+    conn.commit()
+    conn.close()
+
+"""
+    IMAGE STORAGE
+"""
+
+def convertToBinaryData(filename):
+    # Convert digital data to binary format
+    with open(filename, 'rb') as file:
+        blobData = file.read()
+    return blobData
+
+def insertImage(name, photo):
+    try:
+        conn = sql.connect('responses.db')
+        cursor = conn.cursor()
+    
+        sqlite_insert_blob_query = """ INSERT INTO images
+                                  (image_name, image) VALUES (?, ?)"""
+
+        empPhoto = convertToBinaryData(photo)
+        # Convert data into tuple format
+        data_tuple = (name, empPhoto)
+        cursor.execute(sqlite_insert_blob_query, data_tuple)
+        conn.commit()
+
+        conn.close()
+
+    except sql.Error as error:
+        print("Failed to insert blob data into sqlite table", error)
+    finally:
+        if conn:
+            conn.close()
+        
+
+def writeTofile(data, filename):
+    # Convert binary data to proper format and write it on Hard Disk
+    with open(filename, 'wb') as file:
+        file.write(data)
+
+
+def readImage(url=f'{os.getcwd()}/random/'):
+    try:
+        conn = sql.connect('responses.db')
+        cursor = conn.cursor()
+
+        sql_fetch_blob_query = """SELECT * FROM images ORDER BY RANDOM() LIMIT 1;"""
+        row = cursor.execute(sql_fetch_blob_query)
+        
+        for item in row:
+            
+            name = item[1]
+            photo = item[2]
+
+            photoPath = f"{url}" + name + ".jpg"
+
+            writeTofile(photo, photoPath)
+
+
+        cursor.close()
+        return photoPath
+
+    except sql.Error as error:
+        print("Failed to read blob data from sqlite table", error)
+    finally:
+        if conn:
+            conn.close()
+           
+"""
+    AUXILIAR FUNCTION TO DELETE ROWS
+"""
+
+def delete():
+    conn = sql.connect("responses.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        f"DELETE FROM images WHERE id=2")
     conn.commit()
     conn.close()

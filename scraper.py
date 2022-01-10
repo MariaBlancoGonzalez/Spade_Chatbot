@@ -9,10 +9,9 @@ def parse_name(name):
 
     return name_parsed
 
-def who_is(name):
-    url = 'https://es.wikipedia.org/wiki/'
+def who_is(name, url):
     request_page = requests.get(url)
-    
+    name = name.replace(' ', '_')
     request_page = requests.get(url+name)
     html_soup_inner = bs4.BeautifulSoup(request_page.content, 'html.parser')
 

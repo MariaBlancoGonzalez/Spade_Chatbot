@@ -17,10 +17,9 @@ def download(ruta):
 
     new_filename = input("Enter filename (including extension): ")  # e.g. new_filename.mp3
 
-    default_filename = vids[vnum].default_filename  # get default name using pytube API
+    default_filename = vids[vnum].default_filename  
     subprocess.run([
         'ffmpeg',
         '-i', os.path.join(parent_dir, default_filename),
         os.path.join(parent_dir, new_filename)
     ])
-
