@@ -1,5 +1,5 @@
 import json
-import os
+import asyncio
 import time
 import datetime # time
 import scraper # web scrapping
@@ -11,18 +11,28 @@ from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
 from spade.message import Message
 from spade.template import Template
-import asyncio
+from textblob import TextBlob
 
 
 # Load the json file with the crendentials
 f = open(f'../credenciales.json',)
 data = json.load(f)
 
+
+"""
+
+    Métodos templates:
+            Métodos utilizados por el emisor y receptor para crear plantillas de mensajes
+
+"""
 def __create_template__(protocol):
     template = Template()
     template.sender = data['spade_intro']['username']
     template.to = data['spade_intro_2']['username']
-    template.metadata = {"performative": "request", "protocol":protocol}
+    if protocol != 'download':
+        template.metadata = {"performative": "request", "protocol":protocol}
+    else: 
+        template.metadata = {"protocol":protocol}
 
     return template
 
@@ -34,14 +44,33 @@ def __create_template_user__(protocol):
 
     return template
 
+"""
+            |                        AGENTE EMISOR:                                     |
+            |                Este agente es el encargado de                             |
+            |            enviar las peticiones al chatbot y recoger                     |
+            |        las respuestas para enviarselas al usuario, también                |
+            |    envía respuestas si el chatbot nos pide algún tipo de información.     |
+
+"""
 class SenderAgent(Agent):
 
+    """
+    
+        Comportamiento Request:
+                Este comportamiento recoge los diferentes comandos con los que podemos indicar al chatbot
+                lo que el usuario quiere hacer, algunos recogen información directamentes de ellos.
+                Si el comando no es reconocido se ha implementado un corrector gramatical.
+    
+    """
     class Request(CyclicBehaviour):
         async def run(self):
             choice = 0
+            command = ''
+            flag = False
             while choice == 0:
-                response = input("\nHow can I help you?: ")
-                print("-You say: ", response)
+                if flag == False:
+                    response = input("\nHow can I help you?: ")
+                    print("-You say: ", response)
                 if response in "show time":
                     choice = 1
                 elif "who is" in response:
@@ -72,6 +101,14 @@ class SenderAgent(Agent):
                 else: 
                     print("[User Agent] Commant not recognized," ,
                     "you can type 'help' to show all the possible commands")
+                    command = ''
+                    while command != 'Y' and command != 'N':
+                        response = str(TextBlob(response).correct())
+                        command = input(f"Do you want to say <<{response}>> (Y/N): ")
+                        
+
+                    if command == 'Y':
+                        flag = True
             
             if choice == 1:
                 
@@ -126,7 +163,7 @@ class SenderAgent(Agent):
 
                 url = response.split(" ")[-1]
                 while url[0:23] != 'https://www.youtube.com':
-                    url = input('It is needed to introduced youtube url to start the search')
+                    url = input('It is needed to introduced youtube url to start the search: ')
                 
 
                 msg.body = url
@@ -178,19 +215,19 @@ class SenderAgent(Agent):
                     print(msg.body)
                 if msg.metadata["performative"] == "failure":
                     print(msg.body)
+                if msg.metadata["performative"] == "request":
+                    mess = Message(to=data['spade_intro_2']['username'], sender=data['spade_intro']['username'])
+                    mess.set_metadata("performative", "inform")
+                    mess.set_metadata("protocol", "download")           
+
+                    message = (msg.body).split('_')
+                    mess.body = f'{input(message[0])} _ {message[1]}'
+                    await self.send(mess)
 
 
     async def setup(self):
         print("[User Agent] "+str(self.jid)+ " started")
         petis = self.Request()
-        responses_time = self.Responses()
-        responses_people = self.Responses()
-        responses_file = self.Responses()
-        responses_download = self.Responses()
-        responses_history = self.Responses()
-        responses_face = self.Responses()
-        responses_meme = self.Responses()
-        responses_exit = self.Responses()
 
         # Msg Templates
         template_time = __create_template_user__("current_time")
@@ -203,24 +240,37 @@ class SenderAgent(Agent):
         template_exit = __create_template_user__("exit")
 
         # Adding the Behaviour with the template will filter all the msg
-        self.add_behaviour(responses_time, template_time) #Este comportamiento solo leera mensajes de este tipo
-        self.add_behaviour(responses_people, template_whois)
-        self.add_behaviour(responses_file, template_file)
-        self.add_behaviour(responses_download, template_download)
-        self.add_behaviour(responses_history, template_history)
-        self.add_behaviour(responses_face, template_facial)
-        self.add_behaviour(responses_meme, template_meme)
-        self.add_behaviour(responses_exit, template_exit)
+        self.add_behaviour(self.Responses(), template_time) #Este comportamiento solo leera mensajes de este tipo
+        self.add_behaviour(self.Responses(), template_whois)
+        self.add_behaviour(self.Responses(), template_file)
+        self.add_behaviour(self.Responses(), template_download)
+        self.add_behaviour(self.Responses(), template_history)
+        self.add_behaviour(self.Responses(), template_facial)
+        self.add_behaviour(self.Responses(), template_meme)
+        self.add_behaviour(self.Responses(), template_exit)
         
         self.add_behaviour(petis)
 
+"""
+            |                        AGENTE RECEPTOR:                               |                    
+            |                Este agente es el encargado de                         |   
+            |            recoger las peticiones del usuario, elaborar               |     
+            |        una respuesta, o pedir al usuario más información para         |
+            |    completar su respuesta. También conecta directamente con la base   |
+            |    de datos implementada en SQLite.                                   |
+
+"""
+
+
 class ReceiverAgent(Agent):
 
-
+    """
+    
+        Comportamiento TimeBehav:
+                Este comportamiento nos muestra la hora de la forma %d/%m/%Y %H:%M:%S
+    
+    """
     class TimeBehav(CyclicBehaviour):
-        ''' 
-        
-        '''
         async def run(self):
 
             msg = await self.receive()
@@ -230,17 +280,26 @@ class ReceiverAgent(Agent):
                 send.set_metadata("performative", "inform")
                 send.set_metadata("protocol", "current_time")           
                 
-                send.body = f'-Bot say: The time is {datetime.datetime.now()}'
+                date = datetime.datetime.now()
+                date_parser = date.strftime("%d/%m/%Y %H:%M:%S")
+                send.body = f'-Bot say: The current time is: {date_parser}'
                 await self.send(send)
 
+
+    """
+    
+        Comportamiento WhoIs:
+                Este comportamiento busca en Wikipedia información sobre una persona y la almacena en la bbdd,
+                si esta persona ha sido buscada con anterioridad y almacenada en nuestra base de datos, 
+                nos muestra la información almacenada. Suma 1 por cada busqueda.
+
+    """
     class WhoIs(CyclicBehaviour):
-        ''' 
-        
-        '''
         async def run(self):
             
             msg = await self.receive()
             if msg:
+
                 search = db.readRows()
                 urls = db.readURL()
 
@@ -275,10 +334,14 @@ class ReceiverAgent(Agent):
 
                 await self.send(send)
                 
+
+    """
+    
+        Comportamiento CreateFile:
+                Este comportamiento crea un fichero, con la información y nombre (con o sin ruta) indicados.
+    
+    """
     class CreateFile(CyclicBehaviour):
-        ''' 
-        
-        '''
         async def run(self):
             msg = await self.receive() 
             if msg:
@@ -299,47 +362,70 @@ class ReceiverAgent(Agent):
                     send.set_metadata("performative", "inform")
                     send.body = f'-Bot say: file created in {body[0]}, with content: {body[1]}'
 
-                except Exception:
+                except:
                     send.set_metadata("performative", "failure")
                     send.body = f'-Bot say: something went wrong while creating the file'
 
                 await self.send(send)
-    # TODO: terminar
+
+
+    """
+    
+        Comportamiento Download:
+                Este comportamiento recibe una url de Youtube y descarga el video en el formato indicado
+    
+    """
     class Download(CyclicBehaviour):
-        ''' 
-        
-        '''
         async def run(self):
 
             msg = await self.receive() 
             if msg:
-                inter_msg  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
-                inter_msg.set_metadata("protocol", "download")
-                inter_msg.set_metadata("performative", "inform")
-                inter_msg.body = f'-Bot say: searching url...'
-                await self.send(inter_msg)
-                try:
-                    msc.download(msg.body)
-                    send  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
-                    send.set_metadata("protocol", "download")
-                    send.set_metadata("performative", "inform")
-                    send.body = f'-Bot say: Video store in music folder'
-                    await self.send(send)
+                if msg.metadata["performative"] == "request":
+                    inter_msg  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
+                    inter_msg.set_metadata("protocol", "download")
+                    inter_msg.set_metadata("performative", "inform")
+                    inter_msg.body = f'-Bot say: searching url...'
+                    await self.send(inter_msg)
+                    try:
+                        send  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
+                        send.set_metadata("protocol", "download")
+                        send.set_metadata("performative", "request")
+                        send.body = f'-Bot say: give me a name with the extension for the file _ {msg.body}'
+                        await self.send(send)
 
-                except Exception:
-                    error  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
-                    error.set_metadata("protocol", "download")
-                    error.set_metadata("performative", "failure")
-                    error.body = f'-Bot say: Something went wrong while downloading the file'
-                    await self.send(error)
+                    except Exception:
+                        error  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
+                        error.set_metadata("protocol", "download")
+                        error.set_metadata("performative", "failure")
+                        error.body = f'-Bot say: Something went wrong sending the msg'
+                        await self.send(error)
+            # ------------------------------------------------------------------------------------------------------------ # 
+                if msg.metadata["performative"] == "inform":
+                    try:
+                        message = (msg.body).split('_')
+                        msc.download(message[1], message[0][0:-1])
+                        send  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
+                        send.set_metadata("protocol", "download")
+                        send.set_metadata("performative", "inform")
+                        send.body = f'-Bot say: Video store in music folder'
+                        await self.send(send)
 
-                print("-Bot say: Video store in music folder")
-                print("..................................................................................................")
+                    except Exception:
+                        error  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
+                        error.set_metadata("protocol", "download")
+                        error.set_metadata("performative", "failure")
+                        error.body = f'-Bot say: Something went wrong sending the msg'
+                        await self.send(error)
+                
 
+    """
+    
+        Comportamiento History:
+                Este comportamiento busca en la base de datos la persona más buscada y nos ofrece información
+                al respecto.
+
+    """
     class History(CyclicBehaviour):
-        ''' 
-        
-        '''
         async def run(self):
 
             msg = await self.receive() 
@@ -362,23 +448,25 @@ class ReceiverAgent(Agent):
 
                     await self.send(error)
                 
+    """
+    
+        Comportamiento Facial:
+                Este comportamiento activa la cámara del ordenador host para identificar una cara.
+
+    """
     class Facial(CyclicBehaviour):
-        ''' 
-        
-        '''
         async def run(self):
 
             msg = await self.receive() 
             if msg:
                 try:
-                    face.detect()
                     inter_msg  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
                     inter_msg.set_metadata("protocol", "faceDetection")
                     inter_msg.set_metadata("performative", "inform")
                     inter_msg.body = f'-Bot say: to close this windows press space bar'
                     
                     await self.send(inter_msg)
-                    
+                    face.detect()
 
                 except Exception:
                     error = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
@@ -388,10 +476,14 @@ class ReceiverAgent(Agent):
 
                     await self.send(error)
                 
+    """
+    
+        Comportamiento MemeCreator:
+                Este comportamiento crea un meme con la cara random si no se le entrega ruta 
+                un meme con la imagen pasada.
+
+    """
     class MemeCreator(CyclicBehaviour):
-        ''' 
-        
-        '''
         async def run(self):
 
             msg = await self.receive() 
@@ -438,10 +530,13 @@ class ReceiverAgent(Agent):
 
                         await self.send(error)
 
-    class ShotDown(CyclicBehaviour):
-        ''' 
-        
-        '''
+    """
+    
+        Comportamiento Shutdown:
+                Apaga el agente chatbot y manda una señal al usuario
+
+    """
+    class ShutDown(CyclicBehaviour):
         async def run(self):
             msg = await self.receive() 
             if msg:
@@ -455,7 +550,11 @@ class ReceiverAgent(Agent):
                 await self.agent.stop()
 
 
+    """
     
+        Inicialización de los comportamientos y agente chatbot o receptor
+    
+    """
     async def setup(self):
         print("[Receiver Agent] "+str(self.jid)+ " started")
 
@@ -468,7 +567,7 @@ class ReceiverAgent(Agent):
         history = self.History()
         face = self.Facial()
         meme = self.MemeCreator()
-        exit = self.ShotDown()
+        exit = self.ShutDown()
 
         # Msg Templates
         template_time = __create_template__("current_time")
@@ -478,7 +577,7 @@ class ReceiverAgent(Agent):
         template_history = __create_template__("history")
         template_facial = __create_template__("faceDetection")
         template_meme = __create_template__("memeCreator")
-        template_shotdown = __create_template__("exit")
+        template_ShutDown = __create_template__("exit")
 
 
         # Adding the Behaviour with the template will filter all the msg
@@ -489,14 +588,14 @@ class ReceiverAgent(Agent):
         self.add_behaviour(history, template_history)
         self.add_behaviour(face, template_facial)
         self.add_behaviour(meme, template_meme)
-        self.add_behaviour(exit, template_shotdown)
+        self.add_behaviour(exit, template_ShutDown)
 
-'''
+"""
 
     Método main:
         Inicialización de los agentes Emisor (USUARIO) y Receptor (CHATBOT).
 
-'''
+"""
 def main():
     
     print("Creating Agents... ")

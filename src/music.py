@@ -2,20 +2,18 @@ import os
 import subprocess
 import pytube
 
-def download(ruta):
-    
-    yt = pytube.YouTube(ruta)
+
+def download(route, name):
+    yt = pytube.YouTube(route)
 
     vids= yt.streams.all()
-    for i in range(len(vids)):
-        print(i,'. ',vids[i])
 
-    vnum = int(input("Enter video id: "))
+    vnum = 0
 
-    parent_dir = r"musica"
-    vids[vnum].download(parent_dir)
+    parent_dir = "../musica"
+    vids[vnum].download("../musica")
 
-    new_filename = input("Enter filename (including extension): ")  # e.g. new_filename.mp3
+    new_filename = name  # e.g. new_filename.mp3
 
     default_filename = vids[vnum].default_filename  
     subprocess.run([

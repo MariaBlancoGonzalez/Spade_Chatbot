@@ -100,6 +100,7 @@ def insertURL(url):
     conn.commit()
     conn.close()
 
+#insertURL('https://en.wikipedia.org/wiki/')
 """
     IMAGE STORAGE
 """
@@ -170,9 +171,11 @@ def readImage(url=f'../random/'):
 """
 
 def delete():
-    conn = sql.connect("responses.db")
+    conn = sql.connect("../DB/responses.db")
     cursor = conn.cursor()
     cursor.execute(
-        f"DELETE FROM images WHERE id=2")
+        f"DELETE FROM urls WHERE url='https://en.wikipedia.org'")
     conn.commit()
     conn.close()
+
+#delete()
