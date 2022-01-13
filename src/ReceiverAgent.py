@@ -1,5 +1,5 @@
 import json
-import datetime # time
+import datetime
 import scraper # web scrapping
 import music as msc
 import face_detection as face
@@ -35,7 +35,7 @@ def __create_template__(protocol):
     template = Template()
     template.sender = data['spade_intro']['username']
     template.to = data['spade_intro_2']['username']
-    if protocol != "download" and protocol != "memeCreator":
+    if protocol != "download" and protocol != "memeCreator" and protocol != "file":
         template.metadata = {"performative": "request", "protocol":protocol}
     else: 
         template.metadata = {"protocol":protocol}
@@ -125,29 +125,49 @@ class ReceiverAgent(Agent):
         async def run(self):
             msg = await self.receive() 
             if msg:
-                send = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
-                send.set_metadata("protocol", "file")
-                try:
-                    inter_msg  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
-                    inter_msg.set_metadata("protocol", "file")
-                    inter_msg.set_metadata("performative", "inform")
-                    inter_msg.body = f'-Bot say: I am creating the file...'
-                    await self.send(inter_msg)
 
-                    body = (msg.body).split(" ")
-                    file = open(f'{body[0]}', "w")
-                    file.write(' '.join(body[1:]))
-                    file.close()
+                if msg.metadata["performative"] == "inform":
+                    send = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
+                    send.set_metadata("protocol", "file")
+                    try:
+                        inter_msg  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
+                        inter_msg.set_metadata("protocol", "file")
+                        inter_msg.set_metadata("performative", "inform")
+                        inter_msg.body = f'-Bot say: I am creating the file...'
+                        await self.send(inter_msg)
+
+                        body = (msg.body).split(" ")
+                        file = open(f'{body[0]}', "w")
+                        file.write(' '.join(body[1:]))
+                        file.close()
            
-                    send.set_metadata("performative", "inform")
-                    send.body = f'-Bot say: file created in {body[0]}, with content: {body[1]}'
+                        send.set_metadata("performative", "inform")
+                        send.body = f'-Bot say: file created in {body[0]}, with content: {body[1]}'
+                        await self.send(send)
+                    except:
+                        send.set_metadata("performative", "failure")
+                        send.body = f'-Bot say: something went wrong while creating the file'
 
-                except:
-                    send.set_metadata("performative", "failure")
-                    send.body = f'-Bot say: something went wrong while creating the file'
+                        await self.send(send)
+                # ------------------------------------------------------------------------------------------------------------ #
+                if msg.metadata["performative"] == "request":
+                    try:
+                        body_send = "- Bot say: If you want to include a route type the hole path, \
+                            if not, the file will be created in the current directory. \
+                            \nExample: file.txt | maria/University/Multiagent/file.txt. \
+                            \n- Bot say: you also have to include some text in the file (enter if not)."
+                        send  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
+                        send.set_metadata("protocol", "file")
+                        send.set_metadata("performative", "request")
+                        send.body = body_send
+                        await self.send(send)
 
-                await self.send(send)
-
+                    except Exception:
+                        error  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
+                        error.set_metadata("protocol", "file")
+                        error.set_metadata("performative", "failure")
+                        error.body = f'-Bot say: Something went wrong sending the msg'
+                        await self.send(error)
 
     """
     
@@ -248,9 +268,10 @@ class ReceiverAgent(Agent):
                     inter_msg  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
                     inter_msg.set_metadata("protocol", "faceDetection")
                     inter_msg.set_metadata("performative", "inform")
-                    inter_msg.body = f'-Bot say: to close this windows press space bar'
+                    inter_msg.body = f'-Bot say: Beautiful face!'
                     
                     await self.send(inter_msg)
+
                     face.detect()
 
                 except Exception:
@@ -305,7 +326,6 @@ class ReceiverAgent(Agent):
                             send.set_metadata("protocol", "memeCreator")
                             send.set_metadata("performative", "inform")
                             send.body = f'-Bot say: Meme created, stored in meme folder and the image has been stored in the database '
-
                             await self.send(send)
 
                         except Exception:
@@ -318,11 +338,6 @@ class ReceiverAgent(Agent):
 
                 # Ascking for an image
                 if msg.metadata["performative"] == "request":
-                    inter_msg  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
-                    inter_msg.set_metadata("protocol", "memeCreator")
-                    inter_msg.set_metadata("performative", "inform")
-                    inter_msg.body = f'-Bot say: searching url...'
-                    await self.send(inter_msg)
                     try:
                         send  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
                         send.set_metadata("protocol", "memeCreator")

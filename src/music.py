@@ -4,8 +4,11 @@ import pytube
 
 
 def download(route, name):
-    yt = pytube.YouTube(route)
-
+    try:
+        yt = pytube.YouTube(route)
+    except:
+        return 1
+    
     vids= yt.streams.all()
 
     vnum = 0
@@ -21,3 +24,4 @@ def download(route, name):
         '-i', os.path.join(parent_dir, default_filename),
         os.path.join(parent_dir, new_filename)
     ])
+    return 0
