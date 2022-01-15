@@ -24,7 +24,6 @@ from spade.template import Template
 f = open(f'../credenciales.json',)
 data = json.load(f)
 
-
 """
 
     Método template:
@@ -185,7 +184,7 @@ class ReceiverAgent(Agent):
                         send  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
                         send.set_metadata("protocol", "download")
                         send.set_metadata("performative", "request")
-                        send.body = f'-Bot say: give me a name with the extension for the file _ {msg.body}'
+                        send.body = f'-Bot say: give me a name with the extension for the file: _ {msg.body}'
                         await self.send(send)
 
                     except Exception:
@@ -303,7 +302,7 @@ class ReceiverAgent(Agent):
                             send  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
                             send.set_metadata("protocol", "memeCreator")
                             send.set_metadata("performative", "inform")
-                            send.body = f'-Bot say: Meme created randomly and stored in meme folder '
+                            send.body = f'-Bot say: Meme created randomly and stored in random folder '
 
                             await self.send(send)
 
@@ -325,7 +324,7 @@ class ReceiverAgent(Agent):
                             send  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
                             send.set_metadata("protocol", "memeCreator")
                             send.set_metadata("performative", "inform")
-                            send.body = f'-Bot say: Meme created, stored in meme folder and the image has been stored in the database '
+                            send.body = f'-Bot say: Meme created, stored in random folder and the image has been stored in the database '
                             await self.send(send)
 
                         except Exception:

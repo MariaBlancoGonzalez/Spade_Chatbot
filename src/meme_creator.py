@@ -16,3 +16,4 @@ def create_meme(url):
     img1.paste(img2,(230,480)) 
   
     img1.show()
+    img1.save('../random/meme.png')

@@ -150,10 +150,9 @@ def readImage(url=f'../random/'):
         
         for item in row:
             
-            name = item[1]
             photo = item[2]
 
-            photoPath = f"{url}" + name + ".jpg"
+            photoPath = f"{url}" + 'meme' + ".png"
 
             writeTofile(photo, photoPath)
 
@@ -174,7 +173,7 @@ def delete():
     conn = sql.connect("../DB/responses.db")
     cursor = conn.cursor()
     cursor.execute(
-        f"DELETE FROM urls WHERE url='https://en.wikipedia.org'")
+        f"DELETE FROM whoIs WHERE search != ''")
     conn.commit()
     conn.close()
 

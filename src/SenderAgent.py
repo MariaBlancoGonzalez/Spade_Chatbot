@@ -5,6 +5,7 @@ from spade.behaviour import OneShotBehaviour
 from spade.message import Message
 from spade.template import Template
 from textblob import TextBlob
+
 """
             |                        AGENTE EMISOR:                                     |
             |                Este agente es el encargado de                             |
@@ -82,7 +83,7 @@ class SenderAgent(Agent):
                         "\n\t - show me the time"
                         "\n\t - who is 'famous person'"
                         "\n\t - file"
-                        "\n\t - download 'url'"
+                        "\n\t - download or youtube or youtube's urls"
                         "\n\t - history"
                         "\n\t - face detection"
                         "\n\t - meme creator"
@@ -186,13 +187,19 @@ class SenderAgent(Agent):
             if msg:
                 if msg.metadata["performative"] == "inform":
                     print(msg.body)
-                    if msg.body != "Bot shutting down...":
+                    if msg.metadata["protocol"] != "exit":
                         mess = Message(to=data['spade_intro']['username'], sender=data['spade_intro']['username'])
-                        mess.set_metadata("protocol", "menu")   
+                        mess.set_metadata("protocol", "menu")  
                         await self.send(mess)
+                    else:
+                        await self.agent.stop()
 
                 if msg.metadata["performative"] == "failure":
                     print(msg.body)
+                    mess = Message(to=data['spade_intro']['username'], sender=data['spade_intro']['username'])
+                    mess.set_metadata("protocol", "menu")  
+                    await self.send(mess)
+
                 if msg.metadata["performative"] == "request":
                     
                     if msg.metadata["protocol"] == "download":
