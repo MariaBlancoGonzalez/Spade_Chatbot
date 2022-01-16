@@ -195,11 +195,6 @@ class ReceiverAgent(Agent):
                         await self.send(error)
             # ------------------------------------------------------------------------------------------------------------ # 
                 if msg.metadata["performative"] == "inform":
-                    inter_msg  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])
-                    inter_msg.set_metadata("protocol", "download")
-                    inter_msg.set_metadata("performative", "inform")
-                    inter_msg.body = f'-Bot say: searching url...'
-                    await self.send(inter_msg)
                     try:
                         message = (msg.body).split('_')
                         send  = Message(to=data['spade_intro']['username'], sender=data['spade_intro_2']['username'])

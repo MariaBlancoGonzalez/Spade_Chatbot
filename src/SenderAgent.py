@@ -79,16 +79,9 @@ class SenderAgent(Agent):
                     elif "exit" == response:
                         choice = 9
                     elif "help" == response:
-                        print("This is a list with all commands available: "
-                        "\n\t - show me the time"
-                        "\n\t - who is 'famous person'"
-                        "\n\t - file"
-                        "\n\t - download or youtube or youtube's urls"
-                        "\n\t - history"
-                        "\n\t - face detection"
-                        "\n\t - meme creator"
-                        "\n\t - exit"
-                        "\n\t - help")
+                        choice=10
+                    elif flag == True:
+                        choice = 10
                     else: 
                         print("[User Agent] Commant not recognized," ,
                         "you can type 'help' to show all the possible commands")
@@ -96,11 +89,12 @@ class SenderAgent(Agent):
                         if response != str(TextBlob(response).correct()):
                             while command != 'Y' and command != 'N':
                                 response = str(TextBlob(response).correct())
-                                command = input(f"Do you want to say <<{response}>> (Y/N): ")
+                                command = (input(f"Do you want to say <<{response}>> (Y/N): ")).upper()
                         
 
                         if command == 'Y':
                             flag = True
+                        
 
                 if choice == 1:
                     
@@ -180,6 +174,23 @@ class SenderAgent(Agent):
 
                     print("You shutting down...")
                     await self.send(msg)
+
+                elif choice == 10:
+                    print("This is a list with all commands available: "
+                        "\n\t - show me the time"
+                        "\n\t - who is 'famous person'"
+                        "\n\t - file"
+                        "\n\t - download or youtube or youtube's urls"
+                        "\n\t - history"
+                        "\n\t - face detection"
+                        "\n\t - meme creator"
+                        "\n\t - exit"
+                        "\n\t - help")
+                    
+                    mess = Message(to=data['spade_intro']['username'], sender=data['spade_intro']['username'])
+                    mess.set_metadata("protocol", "menu")  
+                    await self.send(mess)
+
 
     class Responses(CyclicBehaviour):
         async def run(self):
