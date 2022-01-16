@@ -1,22 +1,19 @@
 FROM ubuntu:20.04
+FROM python:3.8
+
 MAINTAINER maria.blanco4@alu.uclm.es  
 
-RUN apt-get update 
+RUN apt-get update && apt-get install -y python3-pip
 
-CMD [“echo”,”Image created”] 
-
-RUN apt-get install python3.8.10
 RUN apt-get install sqlite3
-RUN apt install ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg
+RUN apt install -y eog
 
 COPY requirements.txt ./requirements.txt
-WORKDIR ./
+WORKDIR ../
 RUN pip install -r requirements.txt
 RUN apt-get update
-COPY . ./
+RUN mkdir ./home/ChatMaria
+COPY . /home/ChatMaria
 
-RUN --privileged --device=/dev/video0 -it rec bash
-RUN xhost + 
-
-# RUN -it --device=/dev/video0 <image_name>
-# apt install x11-xserver-utils
+RUN apt-get install nano
